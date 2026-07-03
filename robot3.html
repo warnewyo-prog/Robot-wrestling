@@ -1,0 +1,1575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot Wrestling Arena: Coalescing Bodies</title>
+    <style>
+        :root {
+            --bg-dark: #06070d;
+            --panel-bg: rgba(13, 17, 28, 0.85);
+            --border-glow: rgba(0, 242, 254, 0.25);
+            --neon-cyan: #00f2fe;
+            --neon-purple: #9d4edd;
+            --neon-pink: #ff007f;
+            --text-main: #f1f5f9;
+            --text-muted: #64748b;
+            --success: #00e676;
+            --gold: #ffb703;
+            --robot-a: #00f2fe;
+            --robot-b: #9d4edd;
+            --robot-merged: #ff007f;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(0, 242, 254, 0.08) 0px, transparent 40%),
+                radial-gradient(at 100% 100%, rgba(157, 78, 221, 0.08) 0px, transparent 40%);
+        }
+
+        header {
+            background: rgba(6, 7, 13, 0.9);
+            backdrop-filter: blur(12px);
+            border-bottom: 2px solid var(--border-glow);
+            padding: 10px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        .title-area h1 {
+            font-size: 1.3rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .title-area p {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .championship-badge {
+            background: linear-gradient(135deg, rgba(255,0,127,0.1), rgba(0,242,254,0.1));
+            border: 1px solid var(--neon-pink);
+            padding: 6px 14px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #fff;
+            letter-spacing: 1px;
+            box-shadow: 0 0 10px rgba(255,0,127,0.2);
+            animation: pulseGlow 2s infinite ease-in-out;
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 8px rgba(255,0,127,0.2); border-color: var(--neon-pink); }
+            50% { box-shadow: 0 0 16px rgba(0,242,254,0.4); border-color: var(--neon-cyan); }
+        }
+
+        .workspace {
+            display: grid;
+            grid-template-columns: 310px 1fr 340px;
+            gap: 12px;
+            padding: 12px;
+            flex: 1;
+            height: calc(100vh - 65px);
+            overflow: hidden;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 12px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .panel::-webkit-scrollbar {
+            width: 4px;
+        }
+        .panel::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+        }
+
+        h2 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #fff;
+            margin-bottom: 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .input-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.04);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .input-card.card-a { border-left: 3px solid var(--robot-a); }
+        .input-card.card-b { border-left: 3px solid var(--robot-b); }
+
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+            margin-bottom: 4px;
+        }
+
+        .var-tip {
+            border-bottom: 1px dashed rgba(255,255,255,0.4);
+            cursor: help;
+            position: relative;
+        }
+        .var-tip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 130%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #0b0f19;
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            white-space: pre-wrap;
+            width: 200px;
+            visibility: hidden;
+            opacity: 0;
+            transition: 0.2s ease-in-out;
+            border: 1px solid var(--neon-cyan);
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+        }
+        .var-tip:hover::after {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--neon-cyan);
+            background: #1e293b;
+            height: 5px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .prediction-zone {
+            background: rgba(157, 78, 221, 0.05);
+            border: 1px solid rgba(157, 78, 221, 0.15);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 12px;
+        }
+        .pred-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin-top: 8px;
+        }
+        .pred-btn {
+            background: #151b26;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text-main);
+            padding: 6px;
+            font-size: 0.7rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .pred-btn:hover { background: rgba(255,255,255,0.05); }
+        .pred-btn.selected {
+            background: var(--neon-purple);
+            border-color: #d8b4fe;
+            box-shadow: 0 0 8px rgba(157, 78, 221, 0.4);
+        }
+        .pred-feedback {
+            margin-top: 8px;
+            font-size: 0.7rem;
+            padding: 6px;
+            border-radius: 4px;
+            display: none;
+            line-height: 1.3;
+        }
+
+        .btn-main {
+            background: linear-gradient(135deg, var(--neon-cyan), #0284c7);
+            color: #000;
+            font-weight: bold;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.75rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .btn-main:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
+        }
+        .btn-main:disabled {
+            background: #334155;
+            color: #64748b;
+            cursor: not-allowed;
+        }
+        .btn-sub {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: #fff;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            margin-top: 6px;
+            transition: background 0.2s;
+        }
+        .btn-sub:hover { background: rgba(255,255,255,0.08); }
+
+        .step-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 12px;
+        }
+        .step-card {
+            background: rgba(255,255,255,0.01);
+            border-left: 2px solid rgba(255,255,255,0.1);
+            padding: 6px 10px;
+            font-size: 0.7rem;
+            border-radius: 0 4px 4px 0;
+            color: var(--text-muted);
+        }
+        .step-card.active {
+            background: rgba(0, 242, 254, 0.04);
+            border-left-color: var(--neon-cyan);
+            color: #fff;
+        }
+        .step-card.complete {
+            border-left-color: var(--success);
+            opacity: 0.5;
+        }
+
+        .center-area {
+            display: grid;
+            grid-template-rows: 1fr auto;
+            gap: 12px;
+        }
+
+        .arena-viewport {
+            background: #020307;
+            border: 2px solid rgba(255,255,255,0.05);
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 60px rgba(0,0,0,0.9);
+        }
+
+        /* Arena Crowds and Lasers */
+        .crowd-layer {
+            position: absolute;
+            top: 25px;
+            left: 0;
+            width: 100%;
+            height: 45px;
+            display: flex;
+            justify-content: space-around;
+            opacity: 0.25;
+            pointer-events: none;
+        }
+        .audience-silh {
+            width: 8px;
+            height: 16px;
+            background: #1e293b;
+            border-radius: 4px 4px 0 0;
+            position: relative;
+        }
+        .audience-silh::before {
+            content: '';
+            position: absolute;
+            top: -6px;
+            left: 1px;
+            width: 6px;
+            height: 6px;
+            background: #1e293b;
+            border-radius: 50%;
+        }
+        .arena-active .audience-silh {
+            animation: crowdJump 0.4s infinite alternate;
+        }
+        @keyframes crowdJump {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-3px); }
+        }
+
+        .laser-light {
+            position: absolute;
+            top: 0;
+            width: 2px;
+            height: 200px;
+            background: linear-gradient(to bottom, var(--neon-cyan), transparent);
+            transform-origin: top center;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .laser-1 { left: 25%; transform: rotate(-30deg); }
+        .laser-2 { right: 25%; transform: rotate(30deg); }
+        .arena-active .laser-light {
+            opacity: 0.4;
+            animation: laserSweep 2s infinite alternate ease-in-out;
+        }
+        .arena-active .laser-2 { animation-delay: 1s; }
+        @keyframes laserSweep {
+            0% { transform: rotate(-45deg); }
+            100% { transform: rotate(45deg); }
+        }
+
+        .ring-floor {
+            position: absolute;
+            bottom: 35px;
+            left: 5%;
+            width: 90%;
+            height: 12px;
+            background: #0f172a;
+            border-top: 3px solid #334155;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+        }
+        .ring-rope {
+            position: absolute;
+            bottom: 47px;
+            left: 5%;
+            width: 90%;
+            height: 2px;
+            background: var(--neon-pink);
+            box-shadow: 0 0 8px var(--neon-pink);
+        }
+        .ring-rope-top { bottom: 65px; background: var(--neon-cyan); box-shadow: 0 0 8px var(--neon-cyan); }
+
+        .scoreboard {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(11, 15, 25, 0.9);
+            border: 1px solid var(--border-glow);
+            padding: 6px 16px;
+            border-radius: 6px;
+            text-align: center;
+            min-width: 180px;
+            box-shadow: 0 0 15px rgba(0,242,254,0.15);
+            font-family: monospace;
+            z-index: 50;
+        }
+        .score-title { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+        .score-main { font-size: 0.9rem; color: #fff; font-weight: bold; margin-top: 2px; }
+
+        .cinematic-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 60;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .cinematic-overlay.visible { opacity: 1; pointer-events: auto; }
+        .intro-countdown {
+            font-size: 3rem;
+            font-weight: 900;
+            color: var(--neon-pink);
+            text-shadow: 0 0 20px rgba(255,0,127,0.6);
+            transform: scale(0.5);
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .educational-banner {
+            position: absolute;
+            top: 75px;
+            left: 50%;
+            transform: translateX(-50%) scale(0.8);
+            background: rgba(255, 0, 127, 0.15);
+            border: 2px solid var(--neon-pink);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 800;
+            z-index: 55;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            text-shadow: 0 0 8px rgba(0,0,0,0.5);
+            box-shadow: 0 0 20px rgba(255,0,127,0.3);
+            text-align: center;
+        }
+
+        /* ROBOT ASSETS STRUCTURAL CSS */
+        .robot {
+            position: absolute;
+            bottom: 45px;
+            width: 70px;
+            height: 100px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transform: translateX(-50%);
+            z-index: 10;
+        }
+
+        .r-head {
+            width: 28px;
+            height: 20px;
+            background: #27272a;
+            border: 1.5px solid currentColor;
+            border-radius: 4px;
+            position: relative;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 3px;
+        }
+        .r-antenna {
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 8px;
+            background: #71717a;
+        }
+        .r-antenna::before {
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: -2px;
+            width: 6px;
+            height: 6px;
+            background: currentColor;
+            border-radius: 50%;
+        }
+        .r-eye {
+            width: 6px;
+            height: 6px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 6px currentColor;
+        }
+        .r-torso {
+            width: 44px;
+            height: 36px;
+            background: #18181b;
+            border: 2px solid currentColor;
+            border-radius: 6px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .r-core {
+            width: 12px;
+            height: 12px;
+            background: currentColor;
+            border-radius: 50%;
+            box-shadow: 0 0 10px currentColor;
+        }
+        .r-shoulder {
+            position: absolute;
+            top: 4px;
+            width: 8px;
+            height: 8px;
+            background: #3f3f46;
+            border-radius: 50%;
+        }
+        .shoulder-l { left: -6px; }
+        .shoulder-r { right: -6px; }
+
+        .r-arm {
+            position: absolute;
+            top: 8px;
+            width: 6px;
+            height: 22px;
+            background: #52525b;
+            border-radius: 3px;
+            transform-origin: top center;
+        }
+        .arm-l { left: -5px; }
+        .arm-r { right: -5px; }
+        .r-hand {
+            position: absolute;
+            bottom: -4px;
+            left: -2px;
+            width: 10px;
+            height: 5px;
+            background: #27272a;
+            border-radius: 2px;
+        }
+
+        .r-dock-clamp {
+            position: absolute;
+            width: 5px;
+            height: 12px;
+            background: #3f3f46;
+            top: 12px;
+            transition: all 0.2s;
+        }
+        .dock-l { left: -1px; border-radius: 2px 0 0 2px; }
+        .dock-r { right: -1px; border-radius: 0 2px 2px 0; }
+
+        .r-legs {
+            display: flex;
+            justify-content: space-between;
+            width: 26px;
+            height: 16px;
+        }
+        .r-leg {
+            width: 8px;
+            height: 14px;
+            background: #3f3f46;
+            position: relative;
+            transform-origin: top center;
+        }
+        .r-foot {
+            position: absolute;
+            bottom: -3px;
+            left: -2px;
+            width: 12px;
+            height: 4px;
+            background: #18181b;
+            border-radius: 1px;
+        }
+
+        .r-tag {
+            position: absolute;
+            bottom: -22px;
+            font-size: 0.65rem;
+            background: rgba(0,0,0,0.7);
+            padding: 1px 4px;
+            border-radius: 3px;
+            white-space: nowrap;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .robot-a-body { color: var(--robot-a); }
+        .robot-b-body { color: var(--robot-b); }
+
+        /* MERGED SUPERBOT SPECIFIC ASSETS */
+        .robot-merged-body {
+            color: var(--robot-merged);
+            width: 86px;
+            height: 120px;
+            display: none;
+        }
+        .robot-merged-body .r-head {
+            width: 44px;
+            height: 24px;
+        }
+        .robot-merged-body .r-torso {
+            width: 64px;
+            height: 48px;
+        }
+        .robot-merged-body .r-core {
+            width: 20px;
+            height: 20px;
+        }
+        .robot-merged-body .r-legs {
+            width: 42px;
+        }
+        .robot-merged-body .r-leg {
+            width: 12px;
+        }
+        .robot-merged-body .r-foot {
+            width: 16px;
+        }
+
+        /* VECTOR INFRASTRUCTURE ARROWS */
+        .vector-arrow {
+            position: absolute;
+            top: -24px;
+            height: 3px;
+            background: currentColor;
+            display: flex;
+            align-items: center;
+        }
+        .vector-arrow::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-top: 4px solid transparent;
+            border-bottom: 4px solid transparent;
+        }
+        .dir-right { justify-content: flex-end; }
+        .dir-right::after { border-left: 6px solid currentColor; right: -5px; }
+        .dir-left { justify-content: flex-start; }
+        .dir-left::after { border-right: 6px solid currentColor; left: -5px; }
+
+        .vector-label {
+            position: absolute;
+            top: -42px;
+            font-size: 0.65rem;
+            background: rgba(0,0,0,0.85);
+            padding: 2px 5px;
+            border-radius: 3px;
+            border: 1px solid rgba(255,255,255,0.1);
+            white-space: nowrap;
+        }
+
+        /* LIVE CONTINUOUS MOMENTUM VISUALISER */
+        .visualiser-container {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 8px 12px;
+        }
+        .vis-bar-row {
+            margin-bottom: 6px;
+        }
+        .vis-bar-row:last-child { margin-bottom: 0; }
+        .vis-lbl-container {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-bottom: 2px;
+        }
+        .vis-track-area {
+            height: 8px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+        .vis-fill-bar {
+            position: absolute;
+            height: 100%;
+            width: 0%;
+            left: 50%;
+            border-radius: 4px;
+            transition: width 0.1s, left 0.1s;
+        }
+        .vis-midline {
+            position: absolute;
+            left: 50%;
+            width: 1px;
+            height: 100%;
+            background: rgba(255,255,255,0.2);
+            z-index: 5;
+        }
+
+        /* MATH CALCULATIONS PANEL */
+        .math-card {
+            background: rgba(0,0,0,0.2);
+            border-left: 2px solid rgba(255,255,255,0.1);
+            padding: 8px 10px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            font-family: monospace;
+            font-size: 0.75rem;
+        }
+        .math-card h3 {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        .math-line { color: #fff; margin-top: 2px; }
+        .hl-a { color: var(--robot-a); font-weight: bold; }
+        .hl-b { color: var(--robot-b); font-weight: bold; }
+        .hl-m { color: var(--robot-merged); font-weight: bold; }
+
+        /* CONCEPT ACCORDION CARDS */
+        .accordion-item {
+            background: rgba(255,255,255,0.01);
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 4px;
+            margin-bottom: 4px;
+            overflow: hidden;
+        }
+        .accordion-header {
+            padding: 6px 10px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.02);
+        }
+        .accordion-header:hover { background: rgba(255,255,255,0.05); }
+        .accordion-body {
+            padding: 0 10px;
+            max-height: 0;
+            overflow: hidden;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            line-height: 1.3;
+            transition: max-height 0.2s, padding 0.2s;
+        }
+
+        /* DIAGNOSTIC VERIFICATION QUIZ */
+        .quiz-panel {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: auto;
+        }
+        .quiz-question { font-size: 0.75rem; margin-bottom: 6px; color: #fff; font-weight: 500; }
+        .quiz-options { display: flex; flex-direction: column; gap: 4px; }
+        .quiz-option-btn {
+            background: #111622;
+            border: 1px solid rgba(255,255,255,0.06);
+            color: var(--text-main);
+            padding: 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            text-align: left;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .quiz-option-btn:hover { background: rgba(255,255,255,0.06); }
+        .quiz-status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 6px;
+            font-size: 0.65rem;
+        }
+
+        /* EFFECT GENERATORS */
+        .fx-shockwave {
+            position: absolute;
+            border: 2px solid var(--neon-pink);
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0);
+            z-index: 15;
+            width: 120px;
+            height: 120px;
+        }
+        .fx-spark {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: #fff;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 16;
+        }
+
+        footer {
+            background: rgba(0,0,0,0.6);
+            padding: 4px 20px;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-align: center;
+            border-top: 1px solid rgba(255,255,255,0.02);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="title-area">
+            <h1>Robot Wrestling Arena</h1>
+            <p>Perfectly Inelastic Collision Mechanics — CIE AS Level Mechanics</p>
+        </div>
+        <div class="championship-badge">WRESTLING MECHANICS SYSTEM</div>
+    </header>
+
+    <div class="workspace">
+        
+        <!-- LEFT PANEL: CONTROLS & STEP MATRIX -->
+        <section class="panel" aria-label="Experiment Configuration">
+            <h2>Parameters & Execution</h2>
+            
+            <div class="step-cards">
+                <div class="step-card active" id="step-1"><strong>Step 1:</strong> Calibrate robot mass arrays.</div>
+                <div class="step-card" id="step-2"><strong>Step 2:</strong> Configure initial rail velocities.</div>
+                <div class="step-card" id="step-3"><strong>Step 3:</strong> Select directional arena hypothesis.</div>
+                <div class="step-card" id="step-4"><strong>Step 4:</strong> Energize wrestling ring grids.</div>
+                <div class="step-card" id="step-5"><strong>Step 5:</strong> Observe continuous conservation matrices.</div>
+            </div>
+
+            <!-- Robot A Config -->
+            <div class="input-card card-a">
+                <div class="control-row">
+                    <span><span class="var-tip" data-tooltip="Mass of Robot A (m₁). Units: kg.">Mass m₁ (Titan-A)</span></span>
+                    <span id="txt-ma" class="hl-a">4.0 kg</span>
+                </div>
+                <input type="range" id="range-ma" min="1.0" max="8.0" step="0.5" value="4.0">
+                
+                <div class="control-row" style="margin-top: 8px;">
+                    <span><span class="var-tip" data-tooltip="Initial horizontal velocity of Robot A (u₁). Positive values track rightward. Units: m s⁻¹.">Velocity u₁</span></span>
+                    <span id="txt-ua" class="hl-a">+3.0 m s⁻¹</span>
+                </div>
+                <input type="range" id="range-ua" min="-5.0" max="5.0" step="0.5" value="3.0">
+            </div>
+
+            <!-- Robot B Config -->
+            <div class="input-card card-b">
+                <div class="control-row">
+                    <span><span class="var-tip" data-tooltip="Mass of Robot B (m₂). Units: kg.">Mass m₂ (Goliath-B)</span></span>
+                    <span id="txt-mb" class="hl-b">2.0 kg</span>
+                </div>
+                <input type="range" id="range-mb" min="1.0" max="8.0" step="0.5" value="2.0">
+                
+                <div class="control-row" style="margin-top: 8px;">
+                    <span><span class="var-tip" data-tooltip="Initial horizontal velocity of Robot B (u₂). Negative values track leftward. Units: m s⁻¹.">Velocity u₂</span></span>
+                    <span id="txt-ub" class="hl-b">-2.0 m s⁻¹</span>
+                </div>
+                <input type="range" id="range-ub" min="-5.0" max="5.0" step="0.5" value="-2.0">
+            </div>
+
+            <!-- Directional Hypothesis Prediction -->
+            <div class="prediction-zone">
+                <div class="control-row"><span style="font-weight: bold; color: #fff;">Directional Hypothesis</span></div>
+                <p style="font-size: 0.65rem; color: var(--text-muted); margin-top: 2px;">Predict combined superbot travel path post-impact:</p>
+                <div class="pred-grid">
+                    <button class="pred-btn" onclick="makePrediction('left')">⬅ Left</button>
+                    <button class="pred-btn" onclick="makePrediction('stationary')">⏸ Zero</button>
+                    <button class="pred-btn" onclick="makePrediction('right')">Right ➡</button>
+                </div>
+                <div class="pred-feedback" id="pred-feedback"></div>
+            </div>
+
+            <button class="btn-main" id="btn-fire" onclick="startWrestlingMatch()">⚡ Initialize Fight Matrix</button>
+            <button class="btn-sub" id="btn-reset" onclick="resetArenaCoords()">🔄 Recalibrate Grid</button>
+        </section>
+
+        <!-- CENTER PANEL: LIVE ANIMATED ARENA & CONTINUOUS VISUALISER -->
+        <div class="center-area">
+            <section class="arena-viewport" id="viewport">
+                <!-- Arena Scenery components -->
+                <div class="crowd-layer" id="crowd"></div>
+                <div class="laser-light laser-1"></div>
+                <div class="laser-light laser-2"></div>
+                
+                <div class="scoreboard">
+                    <div class="score-title" id="score-header">ARENA STATUS</div>
+                    <div class="score-main" id="score-monitor">SYS_READY</div>
+                </div>
+
+                <div class="educational-banner" id="edu-banner">MOMENTUM CONSERVED</div>
+                <div class="cinematic-overlay" id="intro-overlay"><div class="intro-countdown" id="countdown-text">3</div></div>
+                <div class="fx-shockwave" id="shockwave"></div>
+
+                <div class="ring-floor"></div>
+                <div class="ring-rope ring-rope-top"></div>
+                <div class="ring-rope"></div>
+
+                <!-- Robot A Structure -->
+                <div class="robot robot-a-body" id="robo-a">
+                    <div class="vector-label" id="vec-lbl-a">p₁ = +12.0 kg m s⁻¹</div>
+                    <div class="vector-arrow" id="arrow-a"></div>
+                    <div class="r-antenna"></div>
+                    <div class="r-head" id="head-a">
+                        <div class="r-eye"></div><div class="r-eye"></div>
+                    </div>
+                    <div class="r-torso" id="torso-a">
+                        <div class="r-shoulder shoulder-l"></div>
+                        <div class="r-arm arm-l" id="arm-la"><div class="r-hand"></div></div>
+                        <div class="r-core" id="core-a"></div>
+                        <div class="r-dock-clamp dock-r"></div>
+                        <div class="r-shoulder shoulder-r"></div>
+                        <div class="r-arm arm-r" id="arm-ra"><div class="r-hand"></div></div>
+                    </div>
+                    <div class="r-legs">
+                        <div class="r-leg" id="leg-la"><div class="r-foot"></div></div>
+                        <div class="r-leg" id="leg-ra"><div class="r-foot"></div></div>
+                    </div>
+                    <div class="r-tag" id="tag-ma">4.0 kg</div>
+                </div>
+
+                <!-- Robot B Structure -->
+                <div class="robot robot-b-body" id="robo-b">
+                    <div class="vector-label" id="vec-lbl-b">p₂ = -4.0 kg m s⁻¹</div>
+                    <div class="vector-arrow" id="arrow-b"></div>
+                    <div class="r-antenna"></div>
+                    <div class="r-head" id="head-b">
+                        <div class="r-eye"></div><div class="r-eye"></div>
+                    </div>
+                    <div class="r-torso" id="torso-b">
+                        <div class="r-shoulder shoulder-l"></div>
+                        <div class="r-arm arm-l" id="arm-lb"><div class="r-hand"></div></div>
+                        <div class="r-core" id="core-b"></div>
+                        <div class="r-dock-clamp dock-l"></div>
+                        <div class="r-shoulder shoulder-r"></div>
+                        <div class="r-arm arm-r" id="arm-rb"><div class="r-hand"></div></div>
+                    </div>
+                    <div class="r-legs">
+                        <div class="r-leg" id="leg-lb"><div class="r-foot"></div></div>
+                        <div class="r-leg" id="leg-rb"><div class="r-foot"></div></div>
+                    </div>
+                    <div class="r-tag" id="tag-mb">2.0 kg</div>
+                </div>
+
+                <!-- Merged Master SuperBot Structure -->
+                <div class="robot robot-merged-body" id="robo-merged">
+                    <div class="vector-label" id="vec-lbl-m">p = +8.0 kg m s⁻¹</div>
+                    <div class="vector-arrow" id="arrow-m"></div>
+                    <div style="display:flex; gap:8px;"><div class="r-antenna" style="left:35%;"></div><div class="r-antenna" style="left:65%;"></div></div>
+                    <div class="r-head" id="head-m">
+                        <div class="r-eye" style="color:var(--robot-a);"></div>
+                        <div class="r-eye" style="color:var(--robot-b);"></div>
+                    </div>
+                    <div class="r-torso">
+                        <div class="r-shoulder shoulder-l" style="background:var(--robot-a);"></div>
+                        <div class="r-arm arm-l" style="transform:rotate(20deg);"><div class="r-hand"></div></div>
+                        <div class="r-core" id="core-m"></div>
+                        <div class="r-shoulder shoulder-r" style="background:var(--robot-b);"></div>
+                        <div class="r-arm arm-r" style="transform:rotate(-20deg);"><div class="r-hand"></div></div>
+                    </div>
+                    <div class="r-legs">
+                        <div class="r-leg"><div class="r-foot"></div></div>
+                        <div class="r-leg"><div class="r-foot"></div></div>
+                        <div class="r-leg" style="background:var(--neon-pink);"><div class="r-foot"></div></div>
+                    </div>
+                    <div class="r-tag" id="tag-mm">6.0 kg</div>
+                </div>
+            </section>
+
+            <!-- MOMENTUM METRIC VISUALISER -->
+            <div class="visualiser-container">
+                <div class="vis-bar-row">
+                    <div class="vis-lbl-container"><span>Momentum Titan-A (p₁)</span><span id="vis-txt-p1">0.0 kg m s⁻¹</span></div>
+                    <div class="vis-track-area"><div class="vis-midline"></div><div class="vis-fill-bar" id="bar-p1" style="background:var(--robot-a);"></div></div>
+                </div>
+                <div class="vis-bar-row">
+                    <div class="vis-lbl-container"><span>Momentum Goliath-B (p₂)</span><span id="vis-txt-p2">0.0 kg m s⁻¹</span></div>
+                    <div class="vis-track-area"><div class="vis-midline"></div><div class="vis-fill-bar" id="bar-p2" style="background:var(--robot-b);"></div></div>
+                </div>
+                <div class="vis-bar-row">
+                    <div class="vis-lbl-container"><span style="color:#fff; font-weight:bold;">Net Unified Momentum Matrix (Σp)</span><span id="vis-txt-ptotal" style="color:#fff; font-weight:bold;">0.0 kg m s⁻¹</span></div>
+                    <div class="vis-track-area"><div class="vis-midline"></div><div class="vis-fill-bar" id="bar-ptotal" style="background:linear-gradient(90deg, var(--neon-cyan), var(--neon-pink));"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL: CALCULATION ENGINES & COMPREHENSION VERIFICATION -->
+        <section class="panel" aria-label="Analytical Mathematics">
+            <h2>Mathematical Profile</h2>
+
+            <div class="math-card">
+                <h3>Linear Momentum Sub-Profiles (p = mv)</h3>
+                <div class="math-line">
+                    p₁ = <span class="hl-a" id="m1-sub">4.0</span> × <span class="hl-a" id="u1-sub">3.0</span> = <span class="hl-a" id="p1-sub">12.0</span> kg m s⁻¹
+                </div>
+                <div class="math-line">
+                    p₂ = <span class="hl-b" id="m2-sub">2.0</span> × <span class="hl-b" id="u2-sub">-2.0</span> = <span class="hl-b" id="p2-sub">-4.0</span> kg m s⁻¹
+                </div>
+            </div>
+
+            <div class="math-card">
+                <h3>Conservation Proof (Σp_initial = Σp_final)</h3>
+                <div style="color:var(--text-muted); font-size:0.65rem;">m₁u₁ + m₂u₂ = (m₁ + m₂)v</div>
+                <div class="math-line" id="eqn-conservation-step">
+                    (12.0) + (-4.0) = (4.0 + 2.0)v<br>
+                    8.0 = 6.0v<br>
+                    v = <span class="hl-m">+1.33 m s⁻¹</span>
+                </div>
+            </div>
+
+            <div class="math-card">
+                <h3>Kinetic Energy Destruction Matrix</h3>
+                <div style="font-size:0.7rem; line-height: 1.4;">
+                    KE Initial: <span id="ke-before" style="color:var(--neon-cyan);">22.00 J</span><br>
+                    KE Coalesced: <span id="ke-after" style="color:var(--neon-purple);">5.33 J</span><br>
+                    <span style="color:var(--neon-pink); font-weight:bold;">Work Dissipated: <span id="ke-loss">16.67 J</span></span>
+                </div>
+            </div>
+
+            <!-- WORKED EXAMPLE PRE-LOAD -->
+            <div class="math-card" style="border-left-color: var(--gold);">
+                <h3 style="color: var(--gold);">Worked Curricular Example</h3>
+                <p style="font-size: 0.65rem; color: var(--text-muted); line-height:1.3;">
+                    A 5.0kg robot running at +4.0 m/s hits a 3.0kg stationary robot. They dock.<br>
+                    <strong>Calculation:</strong><br>
+                    (5×4) + (3×0) = (5+3)v &rArr; 20 = 8v &rArr; v = +2.5 m s⁻¹.<br>
+                    <span style="color:#fff;">KE Converted = 40.0J - 25.0J = 15.0J.</span>
+                </p>
+            </div>
+
+            <!-- EXPLANATORY CONCEPT ACCORDION -->
+            <div style="margin-top: 6px; margin-bottom: 8px;">
+                <div class="accordion-item">
+                    <div class="accordion-header" onclick="toggleAcc(this)">What is momentum? <span>▼</span></div>
+                    <div class="accordion-body">Momentum ($p = mv$) is a vector quantity measuring a body's structural motion threshold. Direction mandates strict utilization of sign assignments ($+$ or $-$).</div>
+                </div>
+                <div class="accordion-item">
+                    <div class="accordion-header" onclick="toggleAcc(this)">What is a coalescing collision? <span>▼</span></div>
+                    <div class="accordion-body">A perfectly inelastic impact condition where structural coupling causes colliding masses to bind completely and move forward with a single unified velocity vector in the arena.</div>
+                </div>
+                <div class="accordion-item">
+                    <div class="accordion-header" onclick="toggleAcc(this)">Why is momentum conserved? <span>▼</span></div>
+                    <div class="accordion-body">Per Newton's Third Law, contact forces during coupling are equal and opposite. Absent net external horizontal friction impulses on the arena floor, total system momentum remains locked.</div>
+                </div>
+                <div class="accordion-item">
+                    <div class="accordion-header" onclick="toggleAcc(this)">Why is kinetic energy lost? <span>▼</span></div>
+                    <div class="accordion-body">Kinetic energy is scalar. The latching process converts available dynamic energy instantly into heat, acoustic vibrations, and structural binding work.</div>
+                </div>
+            </div>
+
+            <!-- OPERATIONAL DIAGNOSTIC QUIZ -->
+            <div class="quiz-panel">
+                <div class="quiz-question" id="quiz-q">Loading diagnostic challenge matrix...</div>
+                <div class="quiz-options" id="quiz-opts"></div>
+                <div class="quiz-status-row">
+                    <span id="quiz-reply" style="color:var(--text-muted);">Awaiting verification choice.</span>
+                    <span id="quiz-mark" style="font-weight:bold; color:var(--gold);">Score: 0/0</span>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <footer>
+        Keyboard Shortcuts: <kbd>Spacebar</kbd> = Energize Arena | <kbd>R</kbd> = Recalibrate Systems. Visual profiles conform to high contrast criteria.
+    </footer>
+
+    <script>
+        // PROCEDURAL AUDIO SYNTH ENGINE (Offline Web Audio API)
+        const AudioEngine = {
+            ctx: null,
+            init() { 
+                if(!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); 
+            },
+            playTone(freq, type, duration, vol) {
+                this.init();
+                try {
+                    let osc = this.ctx.createOscillator();
+                    let gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e){}
+            },
+            step() { this.playTone(120, 'triangle', 0.08, 0.15); },
+            impact() {
+                this.playTone(80, 'sawtooth', 0.4, 0.4);
+                this.playTone(220, 'square', 0.2, 0.2);
+            },
+            latch() { this.playTone(440, 'sine', 0.15, 0.3); setTimeout(() => this.playTone(587, 'sine', 0.2, 0.3), 80); },
+            click() { this.playTone(600, 'sine', 0.03, 0.1); },
+            cheer() { this.playTone(180, 'triangle', 0.5, 0.1); }
+        };
+
+        // GLOBAL CONFIGURATION SYSTEM
+        let state = {
+            m1: 4.0, u1: 3.0,
+            m2: 2.0, u2: -2.0,
+            x1: 150, x2: 450,
+            v: 1.33,
+            hasCollided: false,
+            predicted: null,
+            isRunning: false,
+            viewWidth: 600
+        };
+
+        let simLoop = null;
+        let walkTimer = 0;
+
+        // UI ELEMENT REGISTRY
+        const sliders = {
+            ma: document.getElementById('range-ma'),
+            ua: document.getElementById('range-ua'),
+            mb: document.getElementById('range-mb'),
+            ub: document.getElementById('range-ub')
+        };
+
+        const nodes = {
+            roboA: document.getElementById('robo-a'),
+            roboB: document.getElementById('robo-b'),
+            roboMerged: document.getElementById('robo-merged'),
+            viewport: document.getElementById('viewport'),
+            scoreMonitor: document.getElementById('score-monitor'),
+            scoreHeader: document.getElementById('score-header'),
+            eduBanner: document.getElementById('edu-banner'),
+            shockwave: document.getElementById('shockwave')
+        };
+
+        function initCrowd() {
+            const crowd = document.getElementById('crowd');
+            crowd.innerHTML = '';
+            for(let i=0; i<40; i++) {
+                let s = document.createElement('div');
+                s.className = 'audience-silh';
+                s.style.opacity = (Math.random() * 0.4 + 0.1).toString();
+                crowd.appendChild(s);
+            }
+        }
+
+        function syncState() {
+            if (state.isRunning) return;
+            state.m1 = parseFloat(sliders.ma.value);
+            state.u1 = parseFloat(sliders.ua.value);
+            state.m2 = parseFloat(sliders.mb.value);
+            state.u2 = parseFloat(sliders.ub.value);
+
+            let p1 = state.m1 * state.u1;
+            let p2 = state.m2 * state.u2;
+            let totalP = p1 + p2;
+            let totalM = state.m1 + state.m2;
+            state.v = totalP / totalM;
+
+            state.x1 = 150;
+            state.x2 = state.viewWidth - 150;
+            state.hasCollided = false;
+
+            updateUI();
+        }
+
+        function updateUI() {
+            // Text displays mapping
+            document.getElementById('txt-ma').innerText = `${state.m1.toFixed(1)} kg`;
+            document.getElementById('txt-ua').innerText = `${state.u1 >= 0 ? '+' : ''}${state.u1.toFixed(1)} m/s`;
+            document.getElementById('txt-mb').innerText = `${state.m2.toFixed(1)} kg`;
+            document.getElementById('txt-ub').innerText = `${state.u2 >= 0 ? '+' : ''}${state.u2.toFixed(1)} m/s`;
+
+            document.getElementById('tag-ma').innerText = `${state.m1.toFixed(1)} kg`;
+            document.getElementById('tag-mb').innerText = `${state.m2.toFixed(1)} kg`;
+            document.getElementById('tag-mm').innerText = `${(state.m1 + state.m2).toFixed(1)} kg`;
+
+            let p1 = state.m1 * state.u1;
+            let p2 = state.m2 * state.u2;
+            let totalP = p1 + p2;
+
+            // Math substitutions update
+            document.getElementById('m1-sub').innerText = state.m1.toFixed(1);
+            document.getElementById('u1-sub').innerText = state.u1.toFixed(1);
+            document.getElementById('p1-sub').innerText = p1.toFixed(1);
+            document.getElementById('m2-sub').innerText = state.m2.toFixed(1);
+            document.getElementById('u2-sub').innerText = state.u2.toFixed(1);
+            document.getElementById('p2-sub').innerText = p2.toFixed(1);
+
+            document.getElementById('eqn-conservation-step').innerHTML = `
+                (${p1.toFixed(1)}) + (${p2.toFixed(1)}) = (${state.m1.toFixed(1)} + ${state.m2.toFixed(1)})v<br>
+                ${totalP.toFixed(1)} = ${(state.m1 + state.m2).toFixed(1)}v<br>
+                v = ${totalP.toFixed(1)} / ${(state.m1 + state.m2).toFixed(1)} = <span class="hl-m">${state.v >= 0 ? '+' : ''}${state.v.toFixed(2)} m s⁻¹</span>
+            `;
+
+            let keBefore = (0.5 * state.m1 * Math.pow(state.u1,2)) + (0.5 * state.m2 * Math.pow(state.u2,2));
+            let keAfter = 0.5 * (state.m1 + state.m2) * Math.pow(state.v,2);
+            document.getElementById('ke-before').innerText = `${keBefore.toFixed(2)} J`;
+            document.getElementById('ke-after').innerText = `${keAfter.toFixed(2)} J`;
+            document.getElementById('ke-loss').innerText = `${Math.max(0, keBefore - keAfter).toFixed(2)} J`;
+
+            // Arrows and metrics mapping
+            mapVector(document.getElementById('arrow-a'), document.getElementById('vec-lbl-a'), p1, state.u1);
+            mapVector(document.getElementById('arrow-b'), document.getElementById('vec-lbl-b'), p2, state.u2);
+            mapVector(document.getElementById('arrow-m'), document.getElementById('vec-lbl-m'), totalP, state.v);
+
+            // Synchronous metric bars updating
+            updateBars(p1, p2, totalP);
+
+            if(!state.hasCollided) {
+                nodes.roboA.style.display = 'flex';
+                nodes.roboB.style.display = 'flex';
+                nodes.roboMerged.style.display = 'none';
+                nodes.roboA.style.left = `${state.x1}px`;
+                nodes.roboB.style.left = `${state.x2}px`;
+            } else {
+                nodes.roboA.style.display = 'none';
+                nodes.roboB.style.display = 'none';
+                nodes.roboMerged.style.display = 'flex';
+                nodes.roboMerged.style.left = `${state.x1}px`;
+            }
+        }
+
+        function mapVector(arrow, lbl, momentum, velocity) {
+            let width = Math.abs(momentum) * 4.5;
+            arrow.style.width = `${Math.max(6, Math.min(width, 100))}px`;
+            lbl.innerText = `p = ${momentum >= 0 ? '+' : ''}${momentum.toFixed(1)} kg m s⁻¹`;
+            if(velocity >= 0) {
+                arrow.className = "vector-arrow dir-right";
+            } else {
+                arrow.className = "vector-arrow dir-left";
+            }
+            if(Math.abs(velocity) < 0.01) {
+                arrow.style.width = "0px";
+                lbl.innerText = "p = 0.0 kg m s⁻¹";
+            }
+        }
+
+        function updateBars(p1, p2, totalP) {
+            const boundary = 45; 
+            let p1W = (p1 / boundary) * 50;
+            let p2W = (p2 / boundary) * 50;
+            let totW = (totalP / boundary) * 50;
+
+            applyBarStyle('bar-p1', p1W);
+            applyBarStyle('bar-p2', p2W);
+            applyBarStyle('bar-ptotal', totW);
+
+            document.getElementById('vis-txt-p1').innerText = `${p1.toFixed(1)} kg m s⁻¹`;
+            document.getElementById('vis-txt-p2').innerText = `${p2.toFixed(1)} kg m s⁻¹`;
+            document.getElementById('vis-txt-ptotal').innerText = `${totalP.toFixed(1)} kg m s⁻¹`;
+        }
+
+        function applyBarStyle(id, pct) {
+            const bar = document.getElementById(id);
+            if(pct >= 0) {
+                bar.style.left = "50%";
+                bar.style.width = `${Math.min(pct, 50)}%`;
+            } else {
+                bar.style.left = `${Math.max(50 + pct, 0)}%`;
+                bar.style.width = `${Math.min(Math.abs(pct), 50)}%`;
+            }
+        }
+
+        function makePrediction(dir) {
+            if(state.isRunning) return;
+            state.predicted = dir;
+            document.querySelectorAll('.pred-btn').forEach(b => b.classList.remove('selected'));
+            event.target.classList.add('selected');
+            setStepState(4);
+            AudioEngine.click();
+        }
+
+        function setStepState(stepNum) {
+            for(let i=1; i<=5; i++) {
+                let card = document.getElementById(`step-${i}`);
+                card.className = "step-card";
+                if(i < stepNum) card.classList.add('complete');
+                if(i === stepNum) card.classList.add('active');
+            }
+        }
+
+        // BIOLOGICAL / MECHANICAL IDLE ENGINE SYSTEM
+        function runIdleTick() {
+            walkTimer += 0.05;
+            if(!state.isRunning) {
+                // Alternating organic micro-movements
+                document.getElementById('head-a').style.transform = `translateY(${Math.sin(walkTimer * 2.5) * 1.5}px)`;
+                document.getElementById('head-b').style.transform = `translateY(${Math.cos(walkTimer * 2.2) * 1.5}px)`;
+                document.getElementById('core-a').style.opacity = (Math.sin(walkTimer * 4) * 0.4 + 0.6).toString();
+                document.getElementById('core-b').style.opacity = (Math.cos(walkTimer * 3.5) * 0.4 + 0.6).toString();
+            }
+            requestAnimationFrame(runIdleTick);
+        }
+
+        function startWrestlingMatch() {
+            if(state.isRunning) return;
+            if((state.u1 <= 0 && state.u2 >= 0) || (state.u1 === 0 && state.u2 === 0)) {
+                nodes.scoreMonitor.innerText = "NO COLLISION";
+                return;
+            }
+
+            state.isRunning = true;
+            document.getElementById('btn-fire').disabled = true;
+            document.getElementById('viewport').classList.add('arena-active');
+
+            // Cinematic Introduction Countdown Segment
+            const overlay = document.getElementById('intro-overlay');
+            const cdText = document.getElementById('countdown-text');
+            overlay.classList.add('visible');
+            
+            let count = 3;
+            cdText.innerText = count.toString();
+            AudioEngine.playTone(350, 'square', 0.2, 0.2);
+
+            let countdown = setInterval(() => {
+                count--;
+                if(count > 0) {
+                    cdText.innerText = count.toString();
+                    AudioEngine.playTone(350, 'square', 0.2, 0.2);
+                } else if(count === 0) {
+                    cdText.innerText = "FIGHT!";
+                    cdText.style.color = "var(--neon-cyan)";
+                    AudioEngine.playTone(600, 'sawtooth', 0.4, 0.3);
+                    AudioEngine.cheer();
+                } else {
+                    clearInterval(countdown);
+                    overlay.classList.remove('visible');
+                    executeFightLoop();
+                }
+            }, 600);
+        }
+
+        function executeFightLoop() {
+            setStepState(5);
+            nodes.scoreHeader.innerText = "LIVE TELEMETRY";
+            nodes.scoreMonitor.innerText = "ENGINES WALKING";
+
+            const dt = 0.016;
+            const pxScale = 35; 
+            let stride = 0;
+
+            simLoop = setInterval(() => {
+                stride += 0.25;
+                if(!state.hasCollided) {
+                    // Update positions organically
+                    state.x1 += state.u1 * pxScale * dt;
+                    state.x2 += state.u2 * pxScale * dt;
+
+                    // Apply bipedal structural stride physics configurations
+                    animateWalk(nodes.roboA, 'la', 'ra', stride, state.u1);
+                    animateWalk(nodes.roboB, 'lb', 'rb', stride, state.u2);
+
+                    // Pre-impact clamp deploy criteria
+                    if(Math.abs(state.x2 - state.x1) <= 75) {
+                        nodes.scoreMonitor.innerText = "MAG_CLAMP LOCKING";
+                        document.querySelector('#robo-a .dock-r').style.transform = 'translateX(6px)';
+                        document.querySelector('#robo-b .dock-l').style.transform = 'translateX(-6px)';
+                        AudioEngine.playTone(500, 'sine', 0.05, 0.05);
+                    }
+
+                    // Strict boundary validation collision rule
+                    if(state.x1 >= (state.x2 - 35)) {
+                        state.hasCollided = true;
+                        state.x1 = (state.x1 + state.x2) / 2; // precise alignment snap
+                        triggerCollisionSequence(state.x1);
+                    }
+                } else {
+                    // Coupled master system movement cycle
+                    state.x1 += state.v * pxScale * dt;
+                    animateWalk(nodes.roboMerged, 'lm', 'rm', stride, state.v);
+
+                    if(state.x1 < -50 || state.x1 > state.viewWidth + 50) {
+                        clearInterval(simLoop);
+                        endMatchSequence();
+                    }
+                }
+                updateUI();
+            }, 16);
+        }
+
+        function animateWalk(robot, legLId, legRId, stride, velocity) {
+            if(Math.abs(velocity) < 0.1) return;
+            let ang = Math.sin(stride) * 25;
+            let lLeg = robot.querySelector('.r-legs').children[0];
+            let rLeg = robot.querySelector('.r-legs').children[1];
+            if(lLeg && rLeg) {
+                lLeg.style.transform = `rotate(${ang}deg)`;
+                rLeg.style.transform = `rotate(${-ang}deg)`;
+            }
+            robot.querySelector('.r-torso').style.transform = `translateY(${Math.abs(Math.sin(stride))* -2}px)`;
+            if(Math.abs(Math.sin(stride)) > 0.9) AudioEngine.step();
+        }
+
+        function triggerCollisionSequence(xLoc) {
+            AudioEngine.impact();
+            AudioEngine.latch();
+
+            // Arena camera shaking simulation mapping
+            nodes.viewport.style.transform = 'scale(1.02) translate(4px, -4px)';
+            setTimeout(() => nodes.viewport.style.transform = 'none', 150);
+
+            // Blast outward shockwaves
+            nodes.shockwave.style.left = `${xLoc}px`;
+            nodes.shockwave.style.bottom = '85px';
+            nodes.shockwave.style.opacity = '1';
+            nodes.shockwave.style.transform = 'translate(-50%, -50%) scale(1.8)';
+            nodes.shockwave.style.transition = 'transform 0.4s ease-out, opacity 0.4s ease-out';
+
+            // Continuous math overlay call out banner
+            nodes.eduBanner.style.opacity = '1';
+            nodes.eduBanner.style.transform = 'translateX(-50%) scale(1)';
+
+            setTimeout(() => {
+                nodes.shockwave.style.opacity = '0';
+                nodes.shockwave.style.transform = 'translate(-50%, -50%) scale(0)';
+                nodes.shockwave.style.transition = 'none';
+                nodes.eduBanner.style.opacity = '0';
+                nodes.eduBanner.style.transform = 'translateX(-50%) scale(0.8)';
+            }, 1200);
+
+            // Procedural sparks generation tracking array
+            for(let i=0; i<20; i++) {
+                let sp = document.createElement('div');
+                sp.className = 'fx-spark';
+                sp.style.left = `${xLoc}px`;
+                sp.style.bottom = `${50 + Math.random()*40}px`;
+                sp.style.backgroundColor = Math.random() > 0.5 ? 'var(--neon-cyan)' : 'var(--neon-pink)';
+                nodes.viewport.appendChild(sp);
+
+                let dx = (Math.random() - 0.5) * 180;
+                let dy = (Math.random() + 0.2) * 180;
+
+                sp.animate([
+                    { transform: 'translate(0,0) scale(1)', opacity: 1 },
+                    { transform: `translate(${dx}px, -${dy}px) scale(0)`, opacity: 0 }
+                ], { duration: 600, easing: 'ease-out' });
+
+                setTimeout(() => sp.remove(), 600);
+            }
+
+            verifyHypothesis();
+        }
+
+        function verifyHypothesis() {
+            let actual = 'stationary';
+            if(state.v > 0.05) actual = 'right';
+            if(state.v < -0.05) actual = 'left';
+
+            const box = document.getElementById('pred-feedback');
+            box.style.display = 'block';
+
+            if(state.predicted === actual) {
+                box.style.background = 'rgba(0, 230, 118, 0.12)';
+                box.style.color = 'var(--success)';
+                box.innerHTML = `<strong>Hypothesis Verified:</strong> Net initial momentum direction verified arena progression path.`;
+            } else {
+                box.style.background = 'rgba(255, 0, 127, 0.12)';
+                box.style.color = 'var(--neon-pink)';
+                box.innerHTML = `<strong>Hypothesis Rejected:</strong> The larger absolute initial vector value dominated travel direction.`;
+            }
+        }
+
+        function endMatchSequence() {
+            nodes.scoreHeader.innerText = "ARENA STATUS";
+            nodes.scoreMonitor.innerText = "MATCH CONCLUDED";
+            document.getElementById('btn-fire').disabled = false;
+            document.getElementById('viewport').classList.remove('arena-active');
+            state.isRunning = false;
+        }
+
+        function resetArenaCoords() {
+            clearInterval(simLoop);
+            document.getElementById('btn-fire').disabled = false;
+            document.getElementById('pred-feedback').style.display = 'none';
+            document.querySelectorAll('.pred-btn').forEach(b => b.classList.remove('selected'));
+            document.getElementById('viewport').classList.remove('arena-active');
+            state.predicted = null;
+            state.isRunning = false;
+            nodes.scoreHeader.innerText = "ARENA STATUS";
+            nodes.scoreMonitor.innerText = "SYS_READY";
+            setStepState(1);
+            syncState();
+            AudioEngine.click();
+        }
+
+        function toggleAcc(header) {
+            const b = header.nextElementSibling;
+            if(b.style.maxHeight) {
+                b.style.maxHeight = null;
+                b.style.padding = "0 10px";
+                header.querySelector('span').innerText = '▼';
+            } else {
+                b.style.maxHeight = b.scrollHeight + "px";
+                b.style.padding = "6px 10px";
+                header.querySelector('span').innerText = '▲';
+            }
+            AudioEngine.click();
+        }
+
+        // DYNAMIC EVALUATION QUIZ MODULE DATA
+        const quizBank = [
+            { q: "What profile conditions exist inside an explicit perfectly inelastic collision?", o: ["Momentum is conserved, Kinetic Energy is lost", "Both Momentum and Kinetic Energy are conserved", "Kinetic Energy is conserved, Momentum is lost"], a: 0 },
+            { q: "A negative initial system velocity setting explicitly indicates what scalar trace direction?", o: ["Rightward progression travel", "Stationary state alignment", "Leftward horizontal movement trajectory"], a: 2 },
+            { q: "Why is net mechanical system Kinetic Energy destroyed during robot coupling?", o: ["It transforms into heat, deformation work and audible vibration energy", "The structural system defies standard vector equations", "Frictionless fields absorb all forward kinetic potential parameters"], a: 0 },
+            { q: "If a 6.0kg robot at +4.0 m/s coalesces with a stationary 2.0kg unit, what is common velocity v?", o: ["+4.0 m s⁻¹", "+3.0 m s⁻¹", "+1.5 m s⁻¹"], a: 1 },
+            { q: "Absent net external horizontal impulses, what maintains system momentum conservation constants?", o: ["Newton's Third Law (Equal and opposite internal contact action pairs)", "The absolute total scalar magnitude sum of structural weights", "Centrifugal acceleration parameters built into arena track rails"], a: 0 }
+        ];
+
+        let quizIdx = 0;
+        let score = 0;
+
+        function loadQuizItem() {
+            const item = quizBank[quizIdx];
+            document.getElementById('quiz-q').innerText = item.q;
+            const container = document.getElementById('quiz-opts');
+            container.innerHTML = '';
+            item.o.forEach((opt, idx) => {
+                let btn = document.createElement('button');
+                btn.className = "quiz-option-btn";
+                btn.innerText = opt;
+                btn.onclick = () => checkQuizAns(idx);
+                container.appendChild(btn);
+            });
+        }
+
+        function checkQuizAns(chosen) {
+            const item = quizBank[quizIdx];
+            const reply = document.getElementById('quiz-reply');
+            if(chosen === item.a) {
+                score++;
+                reply.innerText = "Operational Matrix Confirmed! Correct.";
+                reply.style.color = "var(--success)";
+            } else {
+                reply.innerText = "Diagnostic Warning: Erroneous choice.";
+                reply.style.color = "var(--neon-pink)";
+            }
+            quizIdx = (quizIdx + 1) % quizBank.length;
+            document.getElementById('quiz-mark').innerText = `Score: ${score}/${quizBank.length}`;
+            setTimeout(loadQuizItem, 1500);
+        }
+
+        // ACCESSIBILITY & BOUNDS RESIZE LISTENER
+        function checkViewportBounds() {
+            state.viewWidth = nodes.viewport.clientWidth;
+            syncState();
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if(e.code === 'Space') { e.preventDefault(); startWrestlingMatch(); }
+            if(e.code === 'KeyR') { resetArenaCoords(); }
+        });
+
+        [sliders.ma, sliders.ua, sliders.mb, sliders.ub].forEach(s => {
+            s.addEventListener('input', () => {
+                syncState();
+                if(s.id.includes('ma') || s.id.includes('mb')) setStepState(2);
+                if(s.id.includes('ua') || s.id.includes('ub')) setStepState(3);
+            });
+        });
+
+        window.addEventListener('resize', checkViewportBounds);
+        
+        // BOOT INITIALIZATION SEQUENCES
+        initCrowd();
+        checkViewportBounds();
+        runIdleTick();
+        loadQuizItem();
+    </script>
+</body>
+</html>
